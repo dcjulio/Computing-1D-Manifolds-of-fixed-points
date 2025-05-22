@@ -188,13 +188,6 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
 
         %mapping the points
         mappoints = thesystem.mapping(fund.points,manif.stability,opts);
-        
-        % make sure the first point in mappoints is the last point of
-        % previous fundamental domain
-        mappoints.points.x(1)=fund.points.x(end);
-        mappoints.points.y(1)=fund.points.y(end);
-        mappoints.points.z(1)=fund.points.z(end);
-
 
 
     %% STARTING THE ALGORITHM
