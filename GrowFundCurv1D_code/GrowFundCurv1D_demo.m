@@ -51,3 +51,17 @@
 
 %% Plotting the data
     f2=manifplot(pplu);
+
+%% A problem to fix! The fundamental domains do not close!
+figure
+
+idx1=pplu.pointspos.idx_fund_dom(end-1,1):pplu.pointspos.idx_fund_dom(end-1,2);
+plot(pplu.pointspos.y(idx1),pplu.pointspos.z(idx1))
+hold on 
+plot(pplu.pointspos.y(idx1(1)),pplu.pointspos.z(idx1(1)),'b*')
+plot(pplu.pointspos.y(idx1(end)),pplu.pointspos.z(idx1(end)),'bo')
+
+idx2=pplu.pointspos.idx_fund_dom(end,1):pplu.pointspos.idx_fund_dom(end,2);
+plot(pplu.pointspos.y(idx2),pplu.pointspos.z(idx2))
+plot(pplu.pointspos.y(idx2(1)),pplu.pointspos.z(idx2(1)),'r*')
+plot(pplu.pointspos.y(idx2(end)),pplu.pointspos.z(idx2(end)),'ro')

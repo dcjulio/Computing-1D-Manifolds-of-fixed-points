@@ -151,16 +151,18 @@ fund.points.idx_fund_dom = [1 numel(fund.points.x)];
 if strcmp(manif.orientability,'orientation-preserving') 
 
     manif.points=fund.points;
+    manif.points.idx_preimages=zeros(1,numel(fund.points.x));
 
     total_arc = fund.points.arc(end);
 
 elseif strcmp(manif.orientability,'orientation-reversing') 
 
     manif.pointspos=fund.points;
+    manif.pointspos.idx_preimages=zeros(1,numel(fund.points.x));
 
     total_arc_pos = fund.points.arc(end);
 
-    manif.pointsneg.x=[]; manif.pointsneg.y=[]; manif.pointsneg.z=[]; manif.pointsneg.arc=[]; manif.pointsneg.idx_fund_dom = []; 
+    manif.pointsneg.x=[]; manif.pointsneg.y=[]; manif.pointsneg.z=[]; manif.pointsneg.arc=[]; manif.pointsneg.idx_fund_dom = []; manif.pointsneg.idx_preimages=[];
     total_arc_neg = 0;
 end
 
@@ -189,6 +191,7 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
         %mapping the points
         mappoints = thesystem.mapping(fund.points,manif.stability,opts);
 
+        idx_eps_preimages=fund.points.idx_fund_dom(1):fund.points.idx_fund_dom(2);
 
     %% STARTING THE ALGORITHM
 
@@ -212,6 +215,9 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
     fund.points.x(nan_idx)=[]; 
     fund.points.y(nan_idx)=[]; 
     fund.points.z(nan_idx)=[]; 
+    
+    idx_eps_preimages(nan_idx)=[]; 
+
 
     %Delete points at infinity
     inf_idx=union(find((mappoints.x.^2+mappoints.y.^2)==1),find(abs(mappoints.z)==1));
@@ -234,7 +240,9 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
     fund.points.y(inf_idx)=[]; 
     fund.points.z(inf_idx)=[]; 
 
-    
+    idx_eps_preimages(inf_idx)=[];
+
+
     fprintf('\n ITERATION OF THE FUNDAMENTAL DOMAIN %i\n',iter)
 
     
@@ -265,7 +273,8 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
         mappoints.y=mappoints.y(1:idx_arc);
         mappoints.z=mappoints.z(1:idx_arc);
         
-        
+        idx_eps_preimages=idx_eps_preimages(1:idx_arc);
+
         if strcmp(manif.orientability,'orientation-preserving')
             stop_arc=1; % this is the last iteration
         elseif strcmp(manif.orientability,'orientation-reversing')
@@ -481,6 +490,7 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
         mapnewpoints.y=mapinterp.y(add_acc.add);
         mapnewpoints.z=mapinterp.z(add_acc.add);
 
+        newidx_preimages=idx_eps_preimages(add_acc.add);
         
        fprintf(' added points: %i) \n',numel(add_acc.add));
 
@@ -503,6 +513,7 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
             fund.points.y=insert(fund.points.y,newpoints.y,add_acc.add);
             fund.points.z=insert(fund.points.z,newpoints.z,add_acc.add); 
 
+            idx_eps_preimages=insert(idx_eps_preimages,newidx_preimages,add_acc.add);
 
         end
         
@@ -517,26 +528,22 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
     fund.points.z=mappoints.z;
     fund.points.arc = arclength(fund.points);
 
-    fund_dom_arc = [fund_dom_arc fund.points.arc(end)]; % how the arclegth of the fundamental domains increase
-
     %fprintf('  rate %.2f \n', growth_rate_fund(end));
-    fprintf(' Fund domain arclength %.1f \n', fund_dom_arc(end));
+    fprintf(' Fund domain arclength %.1f \n', fund.points.arc(end));
 
     %add new branch to the entire manifold
     if strcmp(manif.orientability,'orientation-preserving') 
 
         % add indices of fundamental domain
-        if stop_arc ~= 1
-            iter_fund=numel(Manif.points.idx_fund_dom)/2 + 1;
-            Manif.points.idx_fund_dom(iter_fund,:)=numel(Manif.points.x)+[1 numel(fund.points.x)];
-            fund.points.idx_fund_dom = Manif.points.idx_fund_dom(iter_fund,:);
-        end
-        
+        iter_fund=numel(Manif.points.idx_fund_dom)/2 + 1;
+        Manif.points.idx_fund_dom(iter_fund,:)=numel(Manif.points.x)+[1 numel(fund.points.x)];
+        fund.points.idx_fund_dom = Manif.points.idx_fund_dom(iter_fund,:);
 
         Manif.points.x=[Manif.points.x fund.points.x];
         Manif.points.y=[Manif.points.y fund.points.y];
         Manif.points.z=[Manif.points.z fund.points.z];
         Manif.points.arc = arclength(Manif.points);
+        Manif.points.idx_preimages=[Manif.points.idx_preimages idx_eps_preimages(1:numel(fund.points.x))];
 
         total_arc = Manif.points.arc(end);
         fprintf(' Total arclength %.0f \n', total_arc);
@@ -549,18 +556,16 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
     elseif strcmp(manif.orientability,'orientation-reversing')
         if mod(iter,2)==0
 
-            % add indices of fundamental domain
-            if stop_arc_pos ~= 1
-                iter_fund=numel(Manif.pointspos.idx_fund_dom)/2 + 1;
-                Manif.pointspos.idx_fund_dom(iter_fund,:)=numel(Manif.pointspos.x)+[1 numel(fund.points.x)];
-                fund.points.idx_fund_dom = Manif.pointspos.idx_fund_dom(iter_fund,:);
-            end
+            iter_fund=numel(Manif.pointspos.idx_fund_dom)/2 + 1;
+            Manif.pointspos.idx_fund_dom(iter_fund,:)=numel(Manif.pointspos.x)+[1 numel(fund.points.x)];
+            fund.points.idx_fund_dom = Manif.pointspos.idx_fund_dom(iter_fund,:);
             
             
             Manif.pointspos.x=[Manif.pointspos.x fund.points.x];
             Manif.pointspos.y=[Manif.pointspos.y fund.points.y];
             Manif.pointspos.z=[Manif.pointspos.z fund.points.z];
             Manif.pointspos.arc = arclength(Manif.pointspos);
+            Manif.pointspos.idx_preimages=-abs([Manif.pointspos.idx_preimages idx_eps_preimages(1:numel(fund.points.x))]);
 
             total_arc_pos = Manif.pointspos.arc(end);
             fprintf(' Total arclength positive branch %.1f \n', total_arc_pos);
@@ -573,17 +578,15 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
         else
 
             % add indices of fundamental domain
-            if stop_arc_neg ~= 1
-                iter_fund=numel(Manif.pointsneg.idx_fund_dom)/2 + 1;
-                Manif.pointsneg.idx_fund_dom(iter_fund,:)=numel(Manif.pointsneg.x)+[1 numel(fund.points.x)];
-                fund.points.idx_fund_dom = Manif.pointsneg.idx_fund_dom(iter_fund,:);
-            end
+            iter_fund=numel(Manif.pointsneg.idx_fund_dom)/2 + 1;
+            Manif.pointsneg.idx_fund_dom(iter_fund,:)=numel(Manif.pointsneg.x)+[1 numel(fund.points.x)];
+            fund.points.idx_fund_dom = Manif.pointsneg.idx_fund_dom(iter_fund,:);
             
             Manif.pointsneg.x=[Manif.pointsneg.x fund.points.x];
             Manif.pointsneg.y=[Manif.pointsneg.y fund.points.y];
             Manif.pointsneg.z=[Manif.pointsneg.z fund.points.z];
             Manif.pointsneg.arc = arclength(Manif.pointsneg);
-
+            Manif.pointsneg.idx_preimages=[Manif.pointsneg.idx_preimages idx_eps_preimages(1:numel(fund.points.x))];
 
             total_arc_neg = Manif.pointsneg.arc(end);
             fprintf(' Total arclength negative branch %.1f \n', total_arc_neg);
@@ -599,6 +602,14 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
 %---%----------- END Final section: save info
 end
 %--------------- END adding points
+
+% Erase last fundamental domain if the computation stopped chopping the last part of the manifold
+if strcmp(manif.orientability,'orientation-preserving') && stop_arc == 1
+    Manif.points.idx_fund_dom(end, :) = [];
+elseif strcmp(manif.orientability,'orientation-reversing') && stop_arc_pos + stop_arc_neg == 2
+    Manif.pointspos.idx_fund_dom(end, :) = [];
+    Manif.pointsneg.idx_fund_dom(end, :) = [];
+end
 
 Manif.grow_info.runinf.time=toc;
 
