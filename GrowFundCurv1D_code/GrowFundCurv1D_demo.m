@@ -31,13 +31,20 @@
     pmin=GrowFundCurv1D(opts);
 
 %% Computing intersection points
-    angle=-3*pi/4; %the angle of the plane from [-pi, pi]. (angle=pi/2: x==0 (y>0), angle=0: y==0 (x>0))
+    angle=pi/2; %the angle of the plane from [-pi, pi]. (angle=pi/2: x==0 (y>0), angle=0: y==0 (x>0))
     pmin=inter_plane(pmin,angle);
 
-%% Plotting the data
-    f1=manifplot(pmin);
+%% Epsilon pseudo orbit (orientation-preserving)
+    k=pmin.inter.points.idx(100); %orbit that finish close to the 100th intersection with a plane
+    orbit_pmin=eps_pseudo_orbit(pmin,k);
 
-%% Computing the manifold: Ws(pplu) orientation-reversing
+    % plot the epsilon orbit. Starting and end point are colored in solid red.
+    f1=manifplot(pmin);
+    hold on
+    plot3(orbit_pmin.x([1,end]),orbit_pmin.y([1,end]),orbit_pmin.z([1,end]),'r.','MarkerSize',27) %epsilon orbit
+    plot3(orbit_pmin.x,orbit_pmin.y,orbit_pmin.z,'ko--','LineWidth',1.2) %epsilon orbit
+    
+ %% Computing the manifold: Ws(pplu) orientation-reversing
     opts.user_arclength=opts.user_arclength/2; % each branch has half the total arclength
     opts.name_fixpoint='pplu'; % name of the fixed point associated to the manifold (has to match with the names defined in StdHenon3D)
     opts.stability='Smanifold';
@@ -46,22 +53,16 @@
     pplu=GrowFundCurv1D(opts);
 
 %% Computing intersection points
-    angle=-3*pi/4; %the angle of the plane from [-pi, pi]. (angle=pi/2: x==0 (y>0), angle=0: y==0 (x>0))
+    angle=pi/2; %the angle of the plane from [-pi, pi]. (angle=pi/2: x==0 (y>0), angle=0: y==0 (x>0))
     pplu=inter_plane(pplu,angle);
 
-%% Plotting the data
+%% Epsilon pseudo orbit (orientation-preserving)
+    k=pplu.inter.pointspos.idx(50); %orbit that finish close to the 100th intersection with a plane
+    orbit_pplu=eps_pseudo_orbit(pplu,k);
+
+    % plot the epsilon orbit. Starting and end point are colored in solid red.
     f2=manifplot(pplu);
-
-%% A problem to fix! The fundamental domains do not close!
-figure
-
-idx1=pplu.pointspos.idx_fund_dom(end-1,1):pplu.pointspos.idx_fund_dom(end-1,2);
-plot(pplu.pointspos.y(idx1),pplu.pointspos.z(idx1))
-hold on 
-plot(pplu.pointspos.y(idx1(1)),pplu.pointspos.z(idx1(1)),'b*')
-plot(pplu.pointspos.y(idx1(end)),pplu.pointspos.z(idx1(end)),'bo')
-
-idx2=pplu.pointspos.idx_fund_dom(end,1):pplu.pointspos.idx_fund_dom(end,2);
-plot(pplu.pointspos.y(idx2),pplu.pointspos.z(idx2))
-plot(pplu.pointspos.y(idx2(1)),pplu.pointspos.z(idx2(1)),'r*')
-plot(pplu.pointspos.y(idx2(end)),pplu.pointspos.z(idx2(end)),'ro')
+    hold on
+    hold on
+    plot3(orbit_pplu.x([1,end]),orbit_pplu.y([1,end]),orbit_pplu.z([1,end]),'r.','MarkerSize',27) %epsilon orbit
+    plot3(orbit_pplu.x,orbit_pplu.y,orbit_pplu.z,'ko--','LineWidth',1.2) %epsilon orbit
