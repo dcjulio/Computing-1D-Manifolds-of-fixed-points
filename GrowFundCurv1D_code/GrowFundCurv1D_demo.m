@@ -1,3 +1,5 @@
+
+
 %% Adding the path
     clear all
     close all
@@ -8,7 +10,7 @@
     %--- Information of the system
     opts.thesystem=StdHenon3D; % What is the name of the system file
     opts.par=struct('a', 4.2,'b', 0.3, 'xi', 1.2); % The parameter values and names (has to match with the names defined in StdHenon3D)
-    opts.user_arclength=1000; % What is the approximate arclength of the manifold
+    opts.user_arclength=100; % What is the approximate arclength of the manifold
     
     %--- Number of iterations used to compute the manifold
     opts.max_funditer=30; % how many times (max) the algorithm iterates the fundamental domain
@@ -35,7 +37,7 @@
     pmin=inter_plane(pmin,angle);
 
 %% Epsilon pseudo orbit (orientation-preserving)
-    k=pmin.inter.points.idx(100); %orbit that finish close to the 100th intersection with a plane
+    k=pmin.inter.points.idx(3); % pseudo orbit that finish at the point k
     orbit_pmin=eps_pseudo_orbit(pmin,k);
 
     % plot the epsilon orbit. Starting and end point are colored in solid red.
@@ -57,7 +59,7 @@
     pplu=inter_plane(pplu,angle);
 
 %% Epsilon pseudo orbit (orientation-preserving)
-    k=pplu.inter.pointspos.idx(50); %orbit that finish close to the 100th intersection with a plane
+    k=pplu.inter.pointspos.idx(3); % pseudo orbit that finish at the point k
     orbit_pplu=eps_pseudo_orbit(pplu,k);
 
     % plot the epsilon orbit. Starting and end point are colored in solid red.
@@ -66,3 +68,4 @@
     hold on
     plot3(orbit_pplu.x([1,end]),orbit_pplu.y([1,end]),orbit_pplu.z([1,end]),'r.','MarkerSize',27) %epsilon orbit
     plot3(orbit_pplu.x,orbit_pplu.y,orbit_pplu.z,'ko--','LineWidth',1.2) %epsilon orbit
+    
