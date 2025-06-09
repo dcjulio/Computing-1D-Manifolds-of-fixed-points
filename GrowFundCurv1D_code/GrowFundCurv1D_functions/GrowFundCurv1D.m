@@ -17,6 +17,7 @@ end
     tic
     %%
     %saves the information of the system stored in the structure 'manif' and 'opts'
+    par=manif.system_info.par;
     system_info=manif.system_info;
     thesystem=opts.thesystem;
 
@@ -29,6 +30,13 @@ end
         mapiter=1;
     end
 
+    % if computing unstable manifold, use image
+    % if computing stable manifold, use preimage
+    if strcmp(manif.stability,'Smanifold')
+        sign = -1;
+    elseif strcmp(manif.stability,'Umanifold')
+        sign = 1;
+    end
 
 
     %% Warnings if the manifold we want to compute is not 1D
@@ -63,11 +71,11 @@ end
 
 %% Printing the general information of this run
 
-    names=fieldnames(system_info.par);
+    names=fieldnames(par);
     
     fprintf('\n----');
     for k=1:length(names)
-        fprintf(' %s:%0.2f ',names{k},system_info.par.(names{k}));
+        fprintf(' %s:%0.2f ',names{k},par.(names{k}));
     end
     fprintf('----');
 
@@ -136,7 +144,7 @@ fund_init.z=manif.fixp.z+dist*manif.grow_info.eigvec(3);
 
 % mapping the fundamental domain
 
-fund_end = thesystem.mapping(fund_init,manif.stability,opts,mapiter);
+fund_end = thesystem.mapping(fund_init,opts,sign*mapiter);
 
 
 % interpolate N=4 points linearly
@@ -167,8 +175,6 @@ elseif strcmp(manif.orientability,'orientation-reversing')
 end
 
 
-fund_dom_arc = fund.points.arc(end);
-
 %%
 fprintf(' Starting fundamental domain arclength  %f\n',fund.points.arc(end))
 
@@ -189,7 +195,7 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
         iter=iter+1;
 
         %mapping the points
-        mappoints = thesystem.mapping(fund.points,manif.stability,opts);
+        mappoints = thesystem.mapping(fund.points,opts,sign);
 
         idx_eps_preimages=fund.points.idx_fund_dom(1):fund.points.idx_fund_dom(2);
 
@@ -316,12 +322,12 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
             tt=t_initial;
             t_interp=tt(1:end-1)+(tt(2:end)-tt(1:end-1))/2; % parametrization of interpolated points
             interp = makima3D(fund_initial,t_initial,t_interp); % compute interpolated preimage
-            mapinterp = thesystem.mapping(interp,manif.stability,opts); % interpolated image
+            mapinterp = thesystem.mapping(interp,opts,sign); % interpolated image
          else
              tt=sort([tt t_interp(add_acc.add)]); %parametrization of (new) mesh points
              t_interp=tt(1:end-1)+(tt(2:end)-tt(1:end-1))/2; % parametrization of (new) interpolated points
              interp = makima3D(fund_initial,t_initial,t_interp); % compute interpolated preimage
-             mapinterp = thesystem.mapping(interp,manif.stability,opts); % interpolated image
+             mapinterp = thesystem.mapping(interp,opts,sign); % interpolated image
          end
 
 %%
@@ -681,6 +687,3 @@ function Anew=insert(A,B,ind)
 end
 
 end
-
-
-

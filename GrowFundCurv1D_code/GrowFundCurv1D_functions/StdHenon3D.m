@@ -4,34 +4,26 @@ classdef StdHenon3D
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%%%%%%%%%%%% MAPPING %%%%%%%%%%%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function outpoints = mapping(inpoints,stab,opts,mapiter)
+        function outpoints = mapping(inpoints,opts,mapiter)
             %manif.points: coordinates x,y,z
-            %manif.stab: 'Umanifold' or 'Smanifold'
+            %mapiter: integer. neg for preimage(Smanifold), pos for image(Umanifold)
             thesystem=opts.thesystem;
             points=inpoints;
 
-            % if number of iterations of the map is not provided, then
-            % asume is 1
-            if nargin < 4
-                mapiter = 1;
-            end
 
-            for i=1:mapiter % time the map is applied
+            for i=1:abs(mapiter) % time the map is applied
 
                 %decompactify
                 decomp_points=thesystem.decompactify(points);
 
-                % using map or inverse map depending on the stability of the manifold
-                if isequal('Umanifold',stab)
+                if mapiter>0 %image (associated with Wu)
                     map_points=thesystem.ff(decomp_points,opts);
 
-                elseif isequal('Smanifold',stab)
+                else %preimage (associated with Ws)
                     map_points=thesystem.ff_inv(decomp_points,opts);
-
-                else
-                    fprintf('\nError!: Stability is not defined correctly. \nUse Smanifold for stable or Umanifold for unstable\n')
-                    break; 
+                    
                 end
+                
 
                 %compactify
                 points=thesystem.compactify(map_points); 
