@@ -1,13 +1,18 @@
 function h=manifplot(manif)
 
-angle=str2num(manif.inter.angle(1:end-2))*pi;
+minrad=[];
+maxrad=[];
 
 %-- Colormap pmin all by arclength
-if strcmp(manif.orientability,'orientation-preserving')
-    rad=(manif.points.x.^2+manif.points.y.^2).^(1/2);
-elseif  strcmp(manif.orientability,'orientation-reversing')
-    radpos=(manif.pointspos.x.^2+manif.pointspos.y.^2).^(1/2);
-    radneg=(manif.pointsneg.x.^2+manif.pointsneg.y.^2).^(1/2);
+if isfield(manif.points,'pos')
+    radpos=(manif.points.pos.x.^2+manif.points.pos.y.^2).^(1/2);
+    minrad(end+1)=min(radpos);
+    maxrad(end+1)=max(radpos);
+end
+if isfield(manif.points,'neg')
+    radneg=(manif.points.neg.x.^2+manif.points.neg.y.^2).^(1/2);
+    minrad(end+1)=min(radneg);
+    maxrad(end+1)=max(radneg);
 end
 
 if strcmp(manif.stability,'Smanifold')
@@ -26,20 +31,12 @@ RGB = [R(:), G(:), B(:)];
 h=figure;
 hold on
 colormap(RGB); 
-if strcmp(manif.orientability,'orientation-preserving')
-    color_line3(manif.points.x,manif.points.y,manif.points.z,rad,'EdgeAlpha',1,'LineWidth',1.5);
-elseif  strcmp(manif.orientability,'orientation-reversing')
-    color_line3(manif.pointspos.x,manif.pointspos.y,manif.pointspos.z,radpos,'EdgeAlpha',1,'LineWidth',1.5);
-    color_line3(manif.pointsneg.x,manif.pointsneg.y,manif.pointsneg.z,radneg,'EdgeAlpha',1,'LineWidth',1.5);
+if isfield(manif.points,'pos')
+    color_line3(manif.points.pos.x,manif.points.pos.y,manif.points.pos.z,radpos,'EdgeAlpha',1,'LineWidth',1.5);
 end
-
-
-%-- Plane
-plane.x=[cos(angle),0];
-plane.y=[sin(angle),0];
-plane.z= [-1,1];
-plane.color=[230, 178, 17]/255;
-surf(repmat(plane.x,2,1), repmat(plane.y,2,1), repmat(plane.z,2,1)','FaceAlpha',0.4, 'EdgeColor',plane.color,'FaceColor',plane.color,'FaceLighting','gouraud','LineWidth',1.7)
+if isfield(manif.points,'neg')
+    color_line3(manif.points.neg.x,manif.points.neg.y,manif.points.neg.z,radneg,'EdgeAlpha',1,'LineWidth',1.5);
+end
 
 %-- Unit circle
 [xunit,yunit] = circle(0,0,1,1000);
@@ -47,16 +44,36 @@ plot3(xunit,yunit,ones(size(xunit)),'k','LineWidth',1.5)
 plot3(xunit,yunit,-ones(size(xunit)),'k','LineWidth',1.5)
 % 
 
-% % %-- intersection points
-if strcmp(manif.orientability,'orientation-preserving')
-    plot3(manif.inter.points.x,manif.inter.points.y,manif.inter.points.z,'.','color',RGB2*0.7,'MarkerSize',11);
-elseif  strcmp(manif.orientability,'orientation-reversing')
-    plot3(manif.inter.pointspos.x,manif.inter.pointspos.y,manif.inter.pointspos.z,'.','color',RGB2*0.7,'MarkerSize',11);
-    plot3(manif.inter.pointsneg.x,manif.inter.pointsneg.y,manif.inter.pointsneg.z,'.','color',RGB2*0.7,'MarkerSize',11);
-end
 %-- fixed points
 plot3(manif.system_info.fixp.pplu.x, manif.system_info.fixp.pplu.y, manif.system_info.fixp.pplu.z,'marker','o','MarkerFaceColor',[230, 178, 17]/255,'MarkerEdgeColor',[87, 67, 6]/255,'LineWidth',1.4,'MarkerSize',6.5)
 plot3(manif.system_info.fixp.pmin.x,manif.system_info.fixp.pmin.y,manif.system_info.fixp.pmin.z,'marker','o','MarkerFaceColor',[230, 178, 17]/255,'MarkerEdgeColor',[87, 67, 6]/255,'LineWidth',1.4,'MarkerSize',6.5)
+
+
+if isfield(manif,'inter')
+    angle=str2num(manif.inter.angle(1:end-2))*pi;
+    % % %-- intersection points
+    if isfield(manif.points,'pos')
+        x=manif.inter.points.pos.x;
+        y=manif.inter.points.pos.y;
+        z=manif.inter.points.pos.z;
+        plot3(x,y,z,'.','color',RGB2*0.7,'MarkerSize',11);
+    end
+    if isfield(manif.points,'neg')
+        x=manif.inter.points.neg.x;
+        y=manif.inter.points.neg.y;
+        z=manif.inter.points.neg.z;
+        plot3(x,y,z,'.','color',RGB2*0.7,'MarkerSize',11);
+    end
+
+    %-- Plane
+    plane.x=[cos(angle),0];
+    plane.y=[sin(angle),0];
+    plane.z= [-1,1];
+    plane.color=[230, 178, 17]/255;
+    surf(repmat(plane.x,2,1), repmat(plane.y,2,1), repmat(plane.z,2,1)','FaceAlpha',0.4, 'EdgeColor',plane.color,'FaceColor',plane.color,'FaceLighting','gouraud','LineWidth',1.7)
+
+end
+
 
 xlabel('x')
 ylabel('y')
@@ -64,17 +81,11 @@ zlabel('z')
 xlim([-1.01 1.01])
 ylim([-1.01 1.01])
 zlim([-1.01 1.01])
-
+clim([min(minrad), max(maxrad)]);
 
 title(strrep(manif.name,'_','\_'))
-
 daspect([1 1 1])
 view([100,30])
-if strcmp(manif.orientability,'orientation-preserving')
-    clim([min(rad), max(rad)]);
-elseif  strcmp(manif.orientability,'orientation-reversing')
-    clim([min([radpos,radneg]), max([radpos,radneg])]);  
-end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function h = color_line3(x, y, z, c, varargin)
 % color_line3 plots a 3-D "line" with c-data as color

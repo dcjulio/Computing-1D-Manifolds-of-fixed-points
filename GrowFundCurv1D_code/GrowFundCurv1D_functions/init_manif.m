@@ -50,6 +50,8 @@ manif.grow_info.deltamax=10^(-2);
 manif.grow_info.init_step=10^(-7);  
 
 %% Update accuracy conditions if needed
+manif.grow_info.thesystem = thesystem;
+
 %rewrite them if we other values are defined
 if isfield(opts,'accpar')
     if isfield(opts.accpar,'alphamax')
@@ -104,40 +106,28 @@ end
 %saving the info
 manif.system_info.fixp=fixpinfo;
 
+ 
 %% Stability and orientability and dimension of the manif to compute
+
 name_fixpoint=opts.name_fixpoint; 
 
 manif.stability=opts.stability;
 manif.orientability=manif.system_info.fixp.(name_fixpoint).(opts.stability).orientability; 	% orientability of the manifold
 manif.dimension=manif.system_info.fixp.(name_fixpoint).(opts.stability).dimension;
- 
-branch=''; % we initialize the branch as empty
 
-% if the field branch is defined, then follow that definition to know which
-% branch to compute
+%if the field branch is defined, then follow that definition to know which branch to compute
 if isfield(opts,'branch')
-    if strcmp(opts.branch,'pos')
-        manif.grow_info.init_step=abs(manif.grow_info.init_step);
-    elseif strcmp(opts.branch,'neg')
-        manif.grow_info.init_step=-abs(manif.grow_info.init_step);
-    end
-end
-
-% if the manifold is orientation-preserving then we compute either:
-% positive or negative branch, depending on the sign of the initial step 'init_step'
-if strcmp(manif.orientability,'orientation-preserving')
-    branch='_pos'; %by default we do positive branch
-    if isfield(opts,'accpar.init_step') && manif.grow_info.init_step<0 %unless the init)step is negative
-        branch='_neg';
-    end
-else %if orientation-reversing, always define a positive initial step 'init_step'
-    manif.grow_info.init_step=abs(manif.grow_info.init_step);
+   if strcmp(opts.branch,'pos')
+       manif.grow_info.init_step=abs(manif.grow_info.init_step);
+   elseif strcmp(opts.branch,'neg')
+       manif.grow_info.init_step=-abs(manif.grow_info.init_step);
+   end
 end
 
 %% Name of the manifold. Example: Ws_pmin_pos
 
 % defining the name of the manifold
-manif.name = sprintf('W%s_%s%s', lower(manif.stability(1)),name_fixpoint,branch);  
+manif.name = sprintf('W%s_%s', lower(manif.stability(1)),name_fixpoint);  
 
 %% Coordinate and eigensystem of the fixed point associated to the manifold
 manif.fixp=manif.system_info.fixp.(name_fixpoint); 

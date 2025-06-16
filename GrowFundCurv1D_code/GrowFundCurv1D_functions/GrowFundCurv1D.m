@@ -39,6 +39,15 @@ end
     end
 
 
+    if manif.grow_info.init_step > 0
+        branch1='pos';
+        branch2='neg';
+    else
+        branch1='neg';
+        branch2='pos';
+    end
+    
+
     %% Warnings if the manifold we want to compute is not 1D
     
     if manif.grow_info.dimension>1
@@ -108,8 +117,8 @@ end
 %% computes first fundamental domain
 
 % by default, we choose the eigenvector going to positive x
-if manif.grow_info.eigvec(1)<0 % is it is going to negative x, then consider the other side
-    manif.grow_info.eigvec=-manif.grow_info.eigvec;
+if manif.grow_info.eigvec(1) < 0 % is it is going to negative x, then consider the other side
+    manif.grow_info.eigvec = -manif.grow_info.eigvec;
 end
 
 % Choosing the initial distance correctly:
@@ -117,33 +126,19 @@ end
 % the end of the fundamental domain is approx at distance: opts.accpar.init_step
 % we assume the linearlize system to do the calculation
 
-% if orientation preserving we need just the first iteration of the map and
-% it is scaled by the eigenvalue
-if strcmp(manif.orientability,'orientation-preserving')
+% distance scaled by the expansion/contraction-rate (eigenvalue)
     if strcmp(manif.stability,'Smanifold')
-        dist = manif.grow_info.init_step*abs(manif.grow_info.eigval);
+        dist = manif.grow_info.init_step*abs(manif.grow_info.eigval^mapiter);
     elseif strcmp(manif.stability,'Umanifold')
-        dist = manif.grow_info.init_step/abs(manif.grow_info.eigval);
+        dist = manif.grow_info.init_step/abs(manif.grow_info.eigval^mapiter);
     end
-end
-
-% if orientation-reversing it is scaled by the eigenval^(mapiter+1)
-  if strcmp(manif.orientability,'orientation-reversing') 
-    if strcmp(manif.stability,'Smanifold')
-        dist = manif.grow_info.init_step*abs(manif.grow_info.eigval^(mapiter+1));
-    elseif strcmp(manif.stability,'Umanifold')
-        dist = manif.grow_info.init_step/abs(manif.grow_info.eigval^(mapiter+1));
-    end
-
-  end
 
 % starting point of the fundamental domain
 fund_init.x=manif.fixp.x+dist*manif.grow_info.eigvec(1);
 fund_init.y=manif.fixp.y+dist*manif.grow_info.eigvec(2);
 fund_init.z=manif.fixp.z+dist*manif.grow_info.eigvec(3);
 
-% mapping the fundamental domain
-
+% mapping the initial point to obtain the first fundamental domain
 fund_end = thesystem.mapping(fund_init,opts,sign*mapiter);
 
 
@@ -152,26 +147,36 @@ fund.points.x = linspace(fund_init.x, fund_end.x, 6);
 fund.points.y = linspace(fund_init.y, fund_end.y, 6);
 fund.points.z = linspace(fund_init.z, fund_end.z, 6);
 
-
 fund.points.arc = arclength(fund.points);
 fund.points.idx_fund_dom = [1 numel(fund.points.x)];
 
+
 if strcmp(manif.orientability,'orientation-preserving') 
 
-    manif.points=fund.points;
-    manif.points.idx_preimages=zeros(1,numel(fund.points.x));
+    manif.points.(branch1)=fund.points;
+    manif.points.(branch1).idx_preimages=zeros(1,numel(fund.points.x));
+    manif.points.(branch1).branch_preimage = branch1; %name of the branch
 
     total_arc = fund.points.arc(end);
+    
 
 elseif strcmp(manif.orientability,'orientation-reversing') 
 
-    manif.pointspos=fund.points;
-    manif.pointspos.idx_preimages=zeros(1,numel(fund.points.x));
+    manif.points.(branch1)=fund.points;
+    manif.points.(branch1).idx_preimages=zeros(1,numel(fund.points.x));
+    manif.points.(branch1).branch_preimage = branch2; %name of the branch
 
-    total_arc_pos = fund.points.arc(end);
+    total_arc_branch1 = fund.points.arc(end);
 
-    manif.pointsneg.x=[]; manif.pointsneg.y=[]; manif.pointsneg.z=[]; manif.pointsneg.arc=[]; manif.pointsneg.idx_fund_dom = []; manif.pointsneg.idx_preimages=[];
-    total_arc_neg = 0;
+    manif.points.(branch2).x=[]; 
+    manif.points.(branch2).y=[]; 
+    manif.points.(branch2).z=[]; 
+    manif.points.(branch2).arc=[]; 
+    manif.points.(branch2).idx_fund_dom = []; 
+    manif.points.(branch2).idx_preimages=[];
+    manif.points.(branch2).branch_preimage = branch1;
+
+    total_arc_branch2 = 0;
 end
 
 
@@ -183,25 +188,37 @@ Manif=manif;
 %----------- Starting the loop
 iter=0;
 stop_arc=0; % flag to stop iterating if we reached the desired arclength
-stop_arc_neg = 0; % flag to stop iterating if we reached the desired arclength (neg branch)
-stop_arc_pos = 0; % flag to stop iterating if we reached the desired arclength (pos branch)
+stop_arc_branch2 = 0; % flag to stop iterating if we reached the desired arclength (neg branch)
+stop_arc_branch1 = 0; % flag to stop iterating if we reached the desired arclength (pos branch)
 
 % iter: number of iterations of the fundamental domain
-while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + stop_arc_pos) ~= 2
+while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_branch2 + stop_arc_branch1) ~= 2
       % we haven't reached the max number of iterations
       % and, we haven't reached the arclength (orientation-preserving case)
       % and, we haven't reached the arclength for the two branches of the manifolds (orientation-reversing case)
 
         iter=iter+1;
 
+
+        %Chech in which branch are we at
+        if strcmp(manif.orientability,'orientation-preserving')
+          branch=branch1;
+        elseif strcmp(manif.orientability,'orientation-reversing')
+            if mod(iter,2) == 0
+                branch=branch1;
+            else
+                branch=branch2;
+            end
+        end
+
         %mapping the points
         mappoints = thesystem.mapping(fund.points,opts,sign);
 
         idx_eps_preimages=fund.points.idx_fund_dom(1):fund.points.idx_fund_dom(2);
 
-    %% STARTING THE ALGORITHM
-
-    %----------- Removing points at infinity or NaN values. This is only because issues from compactification
+     %% STARTING THE ALGORITHM
+ 
+    %% ----------- Removing points at infinity or NaN values. This is only because issues from compactification
 
 
     %Delete NaN values
@@ -249,6 +266,27 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
     idx_eps_preimages(inf_idx)=[];
 
 
+     %% Replace first point of the current mapped segment by the last point of the previous segment (continuous manifold)
+     % and monitoring the distance between first point of the mapped points and the last point of previous fundamental domain on that branch
+
+    if numel(Manif.points.(branch).x) > 0 % there has to be a segment already on the branch to check for the distance
+        dist = sqrt((Manif.points.(branch).x(end) - mappoints.x(1))^2 +...
+                    (Manif.points.(branch).y(end) - mappoints.y(1))^2 +...
+                    (Manif.points.(branch).z(end) - mappoints.z(1))^2);
+    
+        fprintf('dist %.e)\n', dist)
+        
+        %replace the first point of the mapped points by the last point of the previous segment
+        mappoints.x(1) = Manif.points.(branch).x(end);
+        mappoints.y(1) = Manif.points.(branch).y(end);
+        mappoints.z(1) = Manif.points.(branch).z(end);
+    
+        if dist > Manif.grow_info.deltamin
+            fprintf('Warning! The distance between the first point of the current mapped segment and the last point of the previous segment exceeds Deltamin. Current distance: %.e %.e\n', dist)
+        end
+    end
+
+    %%
     fprintf('\n ITERATION OF THE FUNDAMENTAL DOMAIN %i\n',iter)
 
     
@@ -259,13 +297,20 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
         needed_arc = opts.user_arclength - total_arc;
     elseif strcmp(manif.orientability,'orientation-reversing')
         if mod(iter,2)==0 
-            needed_arc = opts.user_arclength - total_arc_pos;
+            needed_arc = opts.user_arclength - total_arc_branch1;
         else
-            needed_arc = opts.user_arclength - total_arc_neg;
+            needed_arc = opts.user_arclength - total_arc_branch2;
         end
     end
     
+    fprintf('%s %s branch \n', manif.name, branch);
     
+
+    if needed_arc < 0
+        fprintf('Warning! We have looped back to a branch that already have the desired arclength. The process will terminate... \n');
+        return;
+    end
+
     % if in this iteration we exceed the desired arclength, then we chop
     % the fundamental domain up to the desired arclength
     if arc_mappoints(end) > needed_arc 
@@ -285,9 +330,9 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
             stop_arc=1; % this is the last iteration
         elseif strcmp(manif.orientability,'orientation-reversing')
             if mod(iter,2)==0 % we are in the positive branch
-                stop_arc_pos=1;
+                stop_arc_branch1=1;
             else
-                stop_arc_neg=1;
+                stop_arc_branch2=1;
             end
         end
     end
@@ -534,72 +579,77 @@ while iter < manif.grow_info.max_funditer && stop_arc ~= 1 && (stop_arc_neg + st
     fund.points.z=mappoints.z;
     fund.points.arc = arclength(fund.points);
 
-    %fprintf('  rate %.2f \n', growth_rate_fund(end));
+    %chop the manifold up to the desired arclength
+    if fund.points.arc(end) > needed_arc
+         idx_arc = find(fund.points.arc < needed_arc, 1, 'last'); %find last point that is less than the needed arc
+
+         % chop the fund domain and the mappoints up to the needed arclength
+         fund.points.x = spline(fund.points.arc,fund.points.x,[fund.points.arc(1:idx_arc) needed_arc]);
+         fund.points.y = spline(fund.points.arc,fund.points.y,[fund.points.arc(1:idx_arc) needed_arc]);
+         fund.points.z = spline(fund.points.arc,fund.points.z,[fund.points.arc(1:idx_arc) needed_arc]);
+         fund.points.arc = arclength(fund.points);
+    end
+
     fprintf(' Fund domain arclength %.1f \n', fund.points.arc(end));
+
+
+
+
+    % obtain the starting index of the fund domain to store. start=1 if is
+    % the first segment store on that branch, start = 2
+    if numel(Manif.points.(branch).x) == 0 % this is not the first time storing data on that branch
+        start=1;
+    else
+        start=2;
+    end
+
+    % add indices of fundamental domain
+    iter_fund = numel(Manif.points.(branch).idx_fund_dom)/2 + 1;
+
+
+    % Add new segment to the entire manifold
+    N = numel(Manif.points.(branch).x);
+    Manif.points.(branch).x = [Manif.points.(branch).x fund.points.x(start:end)];
+    Manif.points.(branch).y = [Manif.points.(branch).y fund.points.y(start:end)];
+    Manif.points.(branch).z = [Manif.points.(branch).z fund.points.z(start:end)];
+    Manif.points.(branch).arc = arclength(Manif.points.(branch));
+
+    Manif.points.(branch).idx_preimages=[Manif.points.(branch).idx_preimages idx_eps_preimages(1:numel(fund.points.x(start:end)))];
+    Manif.points.(branch).idx_fund_dom(iter_fund,:)=[max(N,1) numel(Manif.points.(branch).x)];
+    fund.points.idx_fund_dom = Manif.points.(branch).idx_fund_dom(iter_fund,:);
+
+
 
     %add new branch to the entire manifold
     if strcmp(manif.orientability,'orientation-preserving') 
 
-        % add indices of fundamental domain
-        iter_fund=numel(Manif.points.idx_fund_dom)/2 + 1;
-        Manif.points.idx_fund_dom(iter_fund,:)=numel(Manif.points.x)+[1 numel(fund.points.x)];
-        fund.points.idx_fund_dom = Manif.points.idx_fund_dom(iter_fund,:);
-
-        Manif.points.x=[Manif.points.x fund.points.x];
-        Manif.points.y=[Manif.points.y fund.points.y];
-        Manif.points.z=[Manif.points.z fund.points.z];
-        Manif.points.arc = arclength(Manif.points);
-        Manif.points.idx_preimages=[Manif.points.idx_preimages idx_eps_preimages(1:numel(fund.points.x))];
-
-        total_arc = Manif.points.arc(end);
-        fprintf(' Total arclength %.0f \n', total_arc);
+        total_arc = Manif.points.(branch).arc(end);
+        fprintf(' Total arclength of manifold of %s %s: %.2f \n\n', Manif.name, branch, total_arc);
         
-        % Check once again if we reached the desired arclength
+        %Check once again if we reached the desired arclength
         if total_arc > opts.user_arclength 
-            stop_arc = 1; %this is the last iteration
+            stop_arc = 1;
         end
 
     elseif strcmp(manif.orientability,'orientation-reversing')
         if mod(iter,2)==0
 
-            iter_fund=numel(Manif.pointspos.idx_fund_dom)/2 + 1;
-            Manif.pointspos.idx_fund_dom(iter_fund,:)=numel(Manif.pointspos.x)+[1 numel(fund.points.x)];
-            fund.points.idx_fund_dom = Manif.pointspos.idx_fund_dom(iter_fund,:);
-            
-            
-            Manif.pointspos.x=[Manif.pointspos.x fund.points.x];
-            Manif.pointspos.y=[Manif.pointspos.y fund.points.y];
-            Manif.pointspos.z=[Manif.pointspos.z fund.points.z];
-            Manif.pointspos.arc = arclength(Manif.pointspos);
-            Manif.pointspos.idx_preimages=-abs([Manif.pointspos.idx_preimages idx_eps_preimages(1:numel(fund.points.x))]);
+            total_arc_branch1 = Manif.points.(branch).arc(end);
+            fprintf(' Total arclength of manifold of %s %s: %.2f \n\n', Manif.name, branch, total_arc_branch1);
 
-            total_arc_pos = Manif.pointspos.arc(end);
-            fprintf(' Total arclength positive branch %.1f \n', total_arc_pos);
-     
-            % Check once again if we reached the desired arclength
-            if total_arc_pos > opts.user_arclength 
-                stop_arc_pos = 1;
+            %Check once again if we reached the desired arclength
+            if total_arc_branch1 > opts.user_arclength 
+                stop_arc_branch1 = 1;
             end
 
         else
 
-            % add indices of fundamental domain
-            iter_fund=numel(Manif.pointsneg.idx_fund_dom)/2 + 1;
-            Manif.pointsneg.idx_fund_dom(iter_fund,:)=numel(Manif.pointsneg.x)+[1 numel(fund.points.x)];
-            fund.points.idx_fund_dom = Manif.pointsneg.idx_fund_dom(iter_fund,:);
-            
-            Manif.pointsneg.x=[Manif.pointsneg.x fund.points.x];
-            Manif.pointsneg.y=[Manif.pointsneg.y fund.points.y];
-            Manif.pointsneg.z=[Manif.pointsneg.z fund.points.z];
-            Manif.pointsneg.arc = arclength(Manif.pointsneg);
-            Manif.pointsneg.idx_preimages=[Manif.pointsneg.idx_preimages idx_eps_preimages(1:numel(fund.points.x))];
+            total_arc_branch2 = Manif.points.(branch).arc(end);
+            fprintf(' Total arclength of manifold of %s %s: %.2f \n\n',Manif.name, branch, total_arc_branch2);
 
-            total_arc_neg = Manif.pointsneg.arc(end);
-            fprintf(' Total arclength negative branch %.1f \n', total_arc_neg);
-
-            % Check once again if we reached the desired arclength
-            if total_arc_neg > opts.user_arclength 
-                stop_arc_neg = 1;
+            %Check once again if we reached the desired arclength
+            if total_arc_branch2 > opts.user_arclength 
+                stop_arc_branch2 = 1;
             end
 
         end
@@ -611,20 +661,20 @@ end
 
 % Erase last fundamental domain if the computation stopped chopping the last part of the manifold
 if strcmp(manif.orientability,'orientation-preserving') && stop_arc == 1
-    Manif.points.idx_fund_dom(end, :) = [];
-elseif strcmp(manif.orientability,'orientation-reversing') && stop_arc_pos + stop_arc_neg == 2
-    Manif.pointspos.idx_fund_dom(end, :) = [];
-    Manif.pointsneg.idx_fund_dom(end, :) = [];
+    Manif.points.(branch1).idx_fund_dom(end, :) = [];
+elseif strcmp(manif.orientability,'orientation-reversing') && stop_arc_branch1 + stop_arc_branch2 == 2
+    Manif.points.(branch1).idx_fund_dom(end, :) = [];
+    Manif.points.(branch2).idx_fund_dom(end, :) = [];
 end
 
 Manif.grow_info.runinf.time=toc;
 
-fprintf('\n elapsed time is %.3f seconds\n\n',Manif.grow_info.runinf.time)
+fprintf('\n elapsed time is %.3f seconds\n\n', Manif.grow_info.runinf.time)
 if strcmp(manif.orientability,'orientation-preserving')
-    fprintf(' %i final points, arclength %.1f \n',numel(Manif.points.x),Manif.points.arc(end)) %76800 longer
+    fprintf(' %i final points, arclength %.1f \n', numel(Manif.points.(branch1).x),Manif.points.(branch1).arc(end)) %76800 longer
 else
-    fprintf(' %i final points (pos), arclength (pos) %.1f \n',numel(Manif.pointspos.x),Manif.pointspos.arc(end)) %76800 longer
-    fprintf(' %i final points (neg), arclength (neg) %.1f \n',numel(Manif.pointsneg.x),Manif.pointsneg.arc(end)) %76800 longer
+    fprintf(' %i final points (%s), arclength (%s) %.1f \n', numel(Manif.points.(branch1).x), branch1, branch1, Manif.points.(branch1).arc(end)) %76800 longer
+    fprintf(' %i final points (%s), arclength (%s) %.1f \n', numel(Manif.points.(branch2).x), branch2, branch2, Manif.points.(branch2).arc(end)) %76800 longer
 end
 fprintf('   * %i points removed \n',Manif.grow_info.runinf.rem_deltamin+Manif.grow_info.runinf.rem_nan+Manif.grow_info.runinf.rem_inf) 
 fprintf('   * %i points added from deltamax \n',Manif.grow_info.runinf.add_deltamax) 

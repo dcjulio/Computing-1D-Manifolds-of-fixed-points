@@ -47,18 +47,14 @@ else
     end
 end
 
+
 %% intersection with plane
 
-%if is the non-orientable manifold (both from 'both branches')
-if isfield(manif,'points')
-    % orientable manifold
-    [manif.inter.points]=plane_inter(manif.points, angle, npoint);
-else
-    % positive branch
-    [manif.inter.pointspos]=plane_inter(manif.pointspos, angle, npoint);
-    
-    % negative branch
-    [manif.inter.pointsneg]=plane_inter(manif.pointsneg, angle, npoint);   
+if isfield(manif.points,'pos')
+    [manif.inter.points.pos]=plane_inter(manif.points.pos, angle, npoint);
+end
+if isfield(manif.points,'neg')
+    [manif.inter.points.neg]=plane_inter(manif.points.neg, angle, npoint);
 end
 
 
@@ -104,7 +100,10 @@ function [inter_points]=plane_inter(points, angle, npoint)
         idx.all=sort(idx_all);
 %---%------- 
     end
-%---%-------    
+%---%-------
+
+% they have to have at least "npoint" after the index
+idx.all = idx.all(idx.all+npoint<numel(points.x));
 %% Finding when the points cross the plane
 
 % we will save the coordinates of the intersection points herer
